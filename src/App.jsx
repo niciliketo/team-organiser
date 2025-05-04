@@ -127,13 +127,14 @@ export function TeamItem({ team, people, onDrop, onRemovePerson, onReorderTeamMe
   const handleDragEnd = (event) => {
     const { active, over } = event;
 
-    if (active.id !== over?.id) {
+    // Make sure both active and over exist, and that they're different
+    if (active && over && active.id !== over.id) {
       // Get the indices of the dragged and target items
       const oldIndex = teamMembers.findIndex(person => person.id === active.id);
       const newIndex = teamMembers.findIndex(person => person.id === over.id);
 
       // Call the reorder function provided by the parent
-      if (onReorderTeamMembers) {
+      if (onReorderTeamMembers && newIndex !== -1) {
         onReorderTeamMembers(team.id, oldIndex, newIndex);
       }
     }

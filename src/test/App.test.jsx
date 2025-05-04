@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../App.jsx';
 
@@ -164,7 +164,13 @@ describe('App Component', () => {
     });
 
     it('removes a person from a team', async () => {
-      const user = userEvent.setup();
+      // Create a mock implementation of localStorage that handles async state updates
+      const mockStorage = {};
+      const originalSetItem = localStorage.setItem;
+      localStorage.setItem = vi.fn((key, value) => {
+        mockStorage[key] = value;
+        originalSetItem(key, value);
+      });
       
       // Setup initial data with a person already in a team
       const initialPeople = [
@@ -173,29 +179,32 @@ describe('App Component', () => {
       const initialTeams = [
         { id: 'team1', name: 'Engineering' }
       ];
+      const initialOrder = {
+        'team1': ['person1']
+      };
       
-      localStorageMock.setItem('teamOrganiserPeople', JSON.stringify(initialPeople));
-      localStorageMock.setItem('teamOrganiserTeams', JSON.stringify(initialTeams));
+      localStorage.setItem('teamOrganiserPeople', JSON.stringify(initialPeople));
+      localStorage.setItem('teamOrganiserTeams', JSON.stringify(initialTeams));
+      localStorage.setItem('teamOrganiserMemberOrder', JSON.stringify(initialOrder));
       
-      render(<App />);
+      const { unmount } = render(<App />);
       
       // Find the remove button for the person
       const removeButton = screen.getByTitle('Remove from team');
       
       // Click the remove button
-      await user.click(removeButton);
+      fireEvent.click(removeButton);
       
-      // Get the updated data from localStorage
-      const setItemCalls = localStorageMock.setItem.mock.calls;
-      const lastPeopleUpdate = setItemCalls.filter(call => call[0] === 'teamOrganiserPeople').pop();
+      // Wait for state updates
+      await waitFor(() => {
+        const peopleStorage = JSON.parse(mockStorage.teamOrganiserPeople || '[]');
+        const updatedPerson = peopleStorage.find(p => p.id === 'person1');
+        expect(updatedPerson && updatedPerson.teamId).toBeNull();
+      });
       
-      if (lastPeopleUpdate) {
-        const updatedPeople = JSON.parse(lastPeopleUpdate[1]);
-        const updatedPerson = updatedPeople.find(p => p.id === 'person1');
-        
-        // Verify the person was removed from the team (teamId set to null)
-        expect(updatedPerson.teamId).toBeNull();
-      }
+      unmount();
+      // Restore the original function
+      localStorage.setItem = originalSetItem;
     });
   });
 });
