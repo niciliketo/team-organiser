@@ -157,6 +157,7 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: relative; /* For sortable indicators */
 }
 
 .person-item .remove-btn {
@@ -186,6 +187,7 @@ button:disabled {
   margin-bottom: 0;
 }
 
+/* Styles for draggable items */
 .person-item[draggable="true"] {
   cursor: grab; /* Indicate draggable items */
 }
@@ -194,6 +196,36 @@ button:disabled {
   cursor: grabbing; /* Indicate dragging in progress */
 }
 
+/* Enhanced styling for sortable items */
+.person-item[data-sortable="true"] {
+  transition: transform 150ms ease, box-shadow 150ms ease;
+  touch-action: none;
+}
+
+.person-item[data-sortable="true"]::before {
+  content: '≡'; /* Add drag indicator */
+  margin-right: 8px;
+  color: #aaa;
+  font-size: 1.2em;
+  cursor: grab;
+}
+
+.person-item[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px #4d90fe;
+}
+
+/* Style when dragging */
+.person-item[data-dragging="true"] {
+  opacity: 0.5;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  z-index: 999;
+}
+
+/* Visual feedback hover */
+.person-item:hover {
+  background-color: #f8f8f8;
+  border-color: #ddd;
+}
 
 /* Teams Section */
 .add-team-section {
@@ -228,11 +260,27 @@ button:disabled {
   border-bottom: 1px solid #dde;
   padding-bottom: 5px;
   font-size: 1.1em;
+  position: relative;
+}
+
+/* Add reorder instructions next to team title */
+.team-item h3::after {
+  content: "(drag to reorder team members)";
+  font-size: 0.7em;
+  font-weight: normal;
+  font-style: italic;
+  color: #777;
+  margin-left: 10px;
+  position: absolute;
+  bottom: 5px;
+  right: 0;
 }
 
 .team-item .person-list {
-  /* Optional: Add specific styles for person lists within teams */
   margin-top: 10px;
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
 }
 
 .team-item p { /* Style for "No members yet" */

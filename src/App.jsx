@@ -1,9 +1,70 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
-// --- Components ---
+// --- Sortable PersonItem Component ---
+function SortablePersonItem({ person, onRemoveFromTeam }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: person.id });
 
-// Make PersonItem draggable for both assigned and unassigned people
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    cursor: 'grab',
+    opacity: isDragging ? 0.5 : 1,
+    boxShadow: isDragging ? '0 5px 15px rgba(0, 0, 0, 0.15)' : 'none',
+    zIndex: isDragging ? 999 : 'auto',
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className="person-item"
+      data-sortable="true"
+      data-dragging={isDragging ? "true" : "false"}
+      {...attributes}
+      {...listeners}
+    >
+      {person.name} ({person.role})
+      {person.teamId && onRemoveFromTeam && (
+        <button
+          className="remove-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemoveFromTeam(person.id);
+          }}
+          title="Remove from team"
+        >
+          ×
+        </button>
+      )}
+    </li>
+  );
+}
+
+// --- Standard PersonItem for unassigned people ---
 export function PersonItem({ person, onDragStart, onRemoveFromTeam }) {
   const handleDragStart = (event) => {
     if (onDragStart) {
@@ -21,8 +82,8 @@ export function PersonItem({ person, onDragStart, onRemoveFromTeam }) {
       {person.name} ({person.role})
       {/* Show remove button only for assigned team members */}
       {person.teamId && onRemoveFromTeam && (
-        <button 
-          className="remove-btn" 
+        <button
+          className="remove-btn"
           onClick={() => onRemoveFromTeam(person.id)}
           title="Remove from team"
         >
@@ -33,10 +94,17 @@ export function PersonItem({ person, onDragStart, onRemoveFromTeam }) {
   );
 }
 
-// Make TeamItem a drop target
-export function TeamItem({ team, people, onDrop, onRemovePerson }) {
+// --- TeamItem Component with Sortable Context ---
+export function TeamItem({ team, people, onDrop, onRemovePerson, onReorderTeamMembers }) {
   const teamMembers = people.filter(person => person.teamId === team.id);
   const [isDragOver, setIsDragOver] = useState(false); // State for drag-over styling
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const handleDragOver = (event) => {
     event.preventDefault(); // Necessary to allow dropping
@@ -56,33 +124,52 @@ export function TeamItem({ team, people, onDrop, onRemovePerson }) {
     }
   };
 
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      // Get the indices of the dragged and target items
+      const oldIndex = teamMembers.findIndex(person => person.id === active.id);
+      const newIndex = teamMembers.findIndex(person => person.id === over.id);
+
+      // Call the reorder function provided by the parent
+      if (onReorderTeamMembers) {
+        onReorderTeamMembers(team.id, oldIndex, newIndex);
+      }
+    }
+  };
+
   return (
     <div
-      // Add 'drag-over' class conditionally
       className={`team-item card ${isDragOver ? 'drag-over' : ''}`}
       onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave} // Add drag leave handler
+      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       <h3>{team.name}</h3>
       {teamMembers.length === 0 ? (
-        <p>No members yet. Drag people here to add them to this team.</p> // Updated placeholder
+        <p>No members yet. Drag people here to add them to this team.</p>
       ) : (
-        <ul className="person-list">
-          {teamMembers.map(person => (
-            <PersonItem
-              key={person.id}
-              person={person}
-              onDragStart={(event) => {
-                // Store both person ID and current team ID
-                event.dataTransfer.setData("personId", person.id);
-                event.dataTransfer.setData("sourceTeamId", person.teamId);
-                event.dataTransfer.effectAllowed = "move";
-              }}
-              onRemoveFromTeam={onRemovePerson}
-            />
-          ))}
-        </ul>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={teamMembers.map(person => person.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul className="person-list">
+              {teamMembers.map(person => (
+                <SortablePersonItem
+                  key={person.id}
+                  person={person}
+                  onRemoveFromTeam={onRemovePerson}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );
@@ -98,9 +185,14 @@ function App() {
     const savedTeams = localStorage.getItem('teamOrganiserTeams');
     return savedTeams ? JSON.parse(savedTeams) : [];
   });
+  // Keep track of team member order
+  const [teamMemberOrder, setTeamMemberOrder] = useState(() => {
+    const savedOrder = localStorage.getItem('teamOrganiserMemberOrder');
+    return savedOrder ? JSON.parse(savedOrder) : {};
+  });
   const [csvInput, setCsvInput] = useState('');
   const [newTeamName, setNewTeamName] = useState('');
-  const fileInputRef = useRef(null); // Ref for the hidden file input
+  const fileInputRef = useRef(null);
 
   // --- Local Storage Persistence ---
   useEffect(() => {
@@ -110,6 +202,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('teamOrganiserTeams', JSON.stringify(teams));
   }, [teams]);
+
+  useEffect(() => {
+    localStorage.setItem('teamOrganiserMemberOrder', JSON.stringify(teamMemberOrder));
+  }, [teamMemberOrder]);
 
   // --- CSV Input Handling ---
   const handleInputChange = (event) => {
@@ -176,21 +272,82 @@ function App() {
     const personId = event.dataTransfer.getData("personId");
     if (!personId) return; // Exit if no personId was found
 
-    setPeople(prevPeople =>
-      prevPeople.map(person =>
+    // Get the source team ID if any
+    const sourceTeamId = event.dataTransfer.getData("sourceTeamId");
+
+    setPeople(prevPeople => {
+      const updatedPeople = prevPeople.map(person =>
         person.id === personId
           ? { ...person, teamId: targetTeamId } // Update teamId for the dropped person
           : person
-      )
-    );
+      );
+
+      // If dropping into a new team, update the team member order
+      if (targetTeamId && targetTeamId !== sourceTeamId) {
+        setTeamMemberOrder(prevOrder => {
+          const newOrder = { ...prevOrder };
+
+          // Remove from previous team if applicable
+          if (sourceTeamId && newOrder[sourceTeamId]) {
+            newOrder[sourceTeamId] = newOrder[sourceTeamId].filter(id => id !== personId);
+          }
+
+          // Add to the new team's order list
+          if (!newOrder[targetTeamId]) {
+            newOrder[targetTeamId] = [];
+          }
+          if (!newOrder[targetTeamId].includes(personId)) {
+            newOrder[targetTeamId] = [...newOrder[targetTeamId], personId];
+          }
+
+          return newOrder;
+        });
+      }
+
+      return updatedPeople;
+    });
   };
 
   const handleRemovePersonFromTeam = (personId) => {
+    // First, get the current teamId of the person to remove
+    const personToRemove = people.find(p => p.id === personId);
+    const teamIdToRemoveFrom = personToRemove?.teamId;
+
+    // Update people state
     setPeople(prevPeople =>
       prevPeople.map(person =>
         person.id === personId ? { ...person, teamId: null } : person
       )
     );
+
+    // Update team member order - remove the person from their team's order
+    if (teamIdToRemoveFrom) {
+      setTeamMemberOrder(prevOrder => {
+        const newOrder = { ...prevOrder };
+        if (newOrder[teamIdToRemoveFrom]) {
+          newOrder[teamIdToRemoveFrom] = newOrder[teamIdToRemoveFrom].filter(id => id !== personId);
+        }
+        return newOrder;
+      });
+    }
+  };
+
+  // --- Handle reordering team members ---
+  const handleReorderTeamMembers = (teamId, oldIndex, newIndex) => {
+    // Update the order for the specific team
+    setTeamMemberOrder(prevOrder => {
+      // If we don't have an order for this team yet, create it from the current people
+      const currentTeamOrder = prevOrder[teamId] ||
+        people.filter(p => p.teamId === teamId).map(p => p.id);
+
+      // Apply the reordering
+      const newTeamOrder = arrayMove(currentTeamOrder, oldIndex, newIndex);
+
+      return {
+        ...prevOrder,
+        [teamId]: newTeamOrder
+      };
+    });
   };
 
   // --- Import/Export Handlers ---
@@ -198,6 +355,7 @@ function App() {
     const dataToExport = {
       people: people,
       teams: teams,
+      teamMemberOrder: teamMemberOrder
     };
     const jsonString = JSON.stringify(dataToExport, null, 2); // Pretty print JSON
     const blob = new Blob([jsonString], { type: 'application/json' });
@@ -238,8 +396,32 @@ function App() {
 
         // Confirm before overwriting
         if (window.confirm('Importing this file will overwrite current people and teams. Continue?')) {
+          // First set the people and teams
           setPeople(importedData.people);
           setTeams(importedData.teams);
+          
+          // Handle team member order
+          if (importedData.teamMemberOrder) {
+            // If the order data exists, use it directly
+            setTeamMemberOrder(importedData.teamMemberOrder);
+          } else {
+            // If importing from a legacy file without order data, generate the order
+            // based on the order people appear in the importedData
+            const newOrder = {};
+            
+            // Group people by team and preserve their order in the imported data
+            importedData.people.forEach(person => {
+              if (person.teamId) {
+                if (!newOrder[person.teamId]) {
+                  newOrder[person.teamId] = [];
+                }
+                newOrder[person.teamId].push(person.id);
+              }
+            });
+            
+            setTeamMemberOrder(newOrder);
+          }
+          
           alert('Data imported successfully!');
         }
       } catch (error) {
@@ -262,8 +444,27 @@ function App() {
     reader.readAsText(file);
   };
 
-  // --- Filtering People ---
+  // --- Filtering and Sorting People ---
   const unassignedPeople = people.filter(person => person.teamId === null);
+
+  // Get sorted team members based on the teamMemberOrder state
+  const getSortedTeamMembers = (teamId) => {
+    const teamMembersArr = people.filter(person => person.teamId === teamId);
+
+    // If we have a stored order for this team, use it to sort
+    if (teamMemberOrder[teamId] && teamMemberOrder[teamId].length > 0) {
+      // Create a map for O(1) lookups of person objects by ID
+      const peopleMap = new Map(teamMembersArr.map(person => [person.id, person]));
+
+      // Return ordered array based on stored order
+      return teamMemberOrder[teamId]
+        .filter(id => peopleMap.has(id)) // Filter out IDs that don't exist anymore
+        .map(id => peopleMap.get(id)); // Get the actual person objects
+    }
+
+    // If no stored order, just return the unordered array
+    return teamMembersArr;
+  };
 
   // --- Rendering ---
   return (
@@ -292,7 +493,6 @@ function App() {
             <h2>Add People (CSV: Name,Role)</h2>
             <textarea
               rows="5"
-              // cols="40" // Let CSS handle width
               value={csvInput}
               onChange={handleInputChange}
               placeholder="Paste CSV data here, one person per line:\nAlice,Developer\nBob,Manager\nCharlie,QA"
@@ -348,9 +548,10 @@ function App() {
                   <TeamItem
                     key={team.id}
                     team={team}
-                    people={people}
+                    people={getSortedTeamMembers(team.id)}
                     onDrop={handleDropOnTeam}
                     onRemovePerson={handleRemovePersonFromTeam}
+                    onReorderTeamMembers={handleReorderTeamMembers}
                   />
                 ))
               )}
