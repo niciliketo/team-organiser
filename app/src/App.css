@@ -1,0 +1,262 @@
+/* Reset and Basic Setup */
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  width: 100%; /* Ensure root takes width */
+}
+
+h1 {
+  font-size: 2.5em;
+  line-height: 1.1;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+h2 {
+  margin-top: 0;
+  border-bottom: 1px solid #555;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+  margin-top: 0.5rem; /* Add some space above buttons */
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+button:disabled {
+  background-color: #333;
+  color: #777;
+  cursor: not-allowed;
+  border-color: transparent;
+}
+
+
+/* Layout */
+.layout-container {
+  display: flex;
+  gap: 20px; /* Space between columns */
+  margin-top: 20px;
+  align-items: flex-start; /* Align columns to the top */
+}
+
+.column {
+  flex: 1; /* Make columns share space equally */
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* Space between cards within a column */
+}
+
+/* Card styling */
+.card {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+
+/* Input Section */
+.input-section textarea {
+  width: 95%; /* Make textarea fill container better */
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  font-family: inherit; /* Use the app's font */
+}
+
+.input-section button,
+.add-team-section button {
+  padding: 8px 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.input-section button:disabled,
+.add-team-section button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.input-section button:hover:not(:disabled),
+.add-team-section button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+
+/* People List Section */
+.people-list-section h2,
+.teams-section h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 5px;
+}
+
+.people-list-section .person-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 40vh; /* Limit height and make scrollable */
+  overflow-y: auto; /* Add scrollbar if needed */
+  border: 1px solid #333; /* Optional border */
+  border-radius: 4px;
+  padding: 0.5rem; /* Padding inside the list area */
+}
+
+.person-item {
+  background-color: #fff;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 5px;
+  font-size: 0.95em;
+}
+.person-item:last-child {
+  margin-bottom: 0;
+}
+
+.person-item[draggable="true"] {
+  cursor: grab; /* Indicate draggable items */
+}
+
+.person-item[draggable="true"]:active {
+  cursor: grabbing; /* Indicate dragging in progress */
+}
+
+
+/* Teams Section */
+.add-team-section {
+  display: flex;
+  gap: 10px; /* Space between input and button */
+  margin-bottom: 15px; /* Space below the add team area */
+  align-items: center;
+}
+
+.add-team-section input[type="text"] {
+  flex-grow: 1; /* Allow input to take available space */
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.teams-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* Space between team cards */
+}
+
+.team-item {
+  /* Inherits .card styles */
+  background-color: #eef; /* Slightly different background for teams */
+  transition: background-color 0.2s ease; /* Smooth transition for hover effect */
+}
+
+.team-item h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #dde;
+  padding-bottom: 5px;
+  font-size: 1.1em;
+}
+
+.team-item .person-list {
+  /* Optional: Add specific styles for person lists within teams */
+  margin-top: 10px;
+}
+
+.team-item p { /* Style for "No members yet" */
+  font-style: italic;
+  color: #666;
+}
+
+.team-item.drag-over {
+  background-color: #d8e8ff; /* Highlight color when dragging over */
+  border-style: dashed;
+}
+
+
+/* Import/Export Section */
+.import-export-section {
+  display: flex;
+  justify-content: center; /* Center buttons */
+  gap: 15px; /* Space between buttons */
+  margin-bottom: 20px; /* Space below the buttons */
+}
+
+
+/* Dark mode specific styles (optional, adjust as needed) */
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+  .card {
+     background-color: #f0f0f0;
+     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+   .input-section textarea {
+     background-color: #fff;
+     border-color: #ccc;
+   }
+   .person-item {
+     background-color: #e9e9e9;
+     border-color: #ddd;
+   }
+   .people-list-section .person-list {
+     border-color: #ccc;
+   }
+    button:disabled {
+      background-color: #ddd;
+      color: #999;
+    }
+}
