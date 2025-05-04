@@ -4,7 +4,7 @@ import './App.css';
 // --- Components ---
 
 // Make PersonItem draggable for both assigned and unassigned people
-function PersonItem({ person, onDragStart, onRemoveFromTeam }) {
+export function PersonItem({ person, onDragStart, onRemoveFromTeam }) {
   const handleDragStart = (event) => {
     if (onDragStart) {
       onDragStart(event, person.id); // Pass person ID on drag start
@@ -34,7 +34,7 @@ function PersonItem({ person, onDragStart, onRemoveFromTeam }) {
 }
 
 // Make TeamItem a drop target
-function TeamItem({ team, people, onDrop, onRemovePerson }) {
+export function TeamItem({ team, people, onDrop, onRemovePerson }) {
   const teamMembers = people.filter(person => person.teamId === team.id);
   const [isDragOver, setIsDragOver] = useState(false); // State for drag-over styling
 
