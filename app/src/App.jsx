@@ -3,8 +3,8 @@ import './App.css';
 
 // --- Components ---
 
-// Make PersonItem draggable when unassigned
-function PersonItem({ person, isDraggable, onDragStart }) {
+// Make PersonItem draggable for both assigned and unassigned people
+function PersonItem({ person, onDragStart, onRemoveFromTeam }) {
   const handleDragStart = (event) => {
     if (onDragStart) {
       onDragStart(event, person.id); // Pass person ID on drag start
@@ -14,17 +14,27 @@ function PersonItem({ person, isDraggable, onDragStart }) {
   return (
     <li
       className="person-item"
-      draggable={isDraggable} // Only draggable if prop is true
-      onDragStart={isDraggable ? handleDragStart : undefined} // Only attach handler if draggable
-      style={{ cursor: isDraggable ? 'grab' : 'default' }} // Visual cue
+      draggable={true} // Always draggable now
+      onDragStart={handleDragStart}
+      style={{ cursor: 'grab' }} // Visual cue for draggable
     >
       {person.name} ({person.role})
+      {/* Show remove button only for assigned team members */}
+      {person.teamId && onRemoveFromTeam && (
+        <button 
+          className="remove-btn" 
+          onClick={() => onRemoveFromTeam(person.id)}
+          title="Remove from team"
+        >
+          ×
+        </button>
+      )}
     </li>
   );
 }
 
 // Make TeamItem a drop target
-function TeamItem({ team, people, onDrop }) {
+function TeamItem({ team, people, onDrop, onRemovePerson }) {
   const teamMembers = people.filter(person => person.teamId === team.id);
   const [isDragOver, setIsDragOver] = useState(false); // State for drag-over styling
 
@@ -56,12 +66,21 @@ function TeamItem({ team, people, onDrop }) {
     >
       <h3>{team.name}</h3>
       {teamMembers.length === 0 ? (
-        <p>No members yet. Drag unassigned people here.</p> // Updated placeholder
+        <p>No members yet. Drag people here to add them to this team.</p> // Updated placeholder
       ) : (
         <ul className="person-list">
           {teamMembers.map(person => (
-            // Pass isDraggable={false} for assigned people (cannot drag them yet)
-            <PersonItem key={person.id} person={person} isDraggable={false} />
+            <PersonItem
+              key={person.id}
+              person={person}
+              onDragStart={(event) => {
+                // Store both person ID and current team ID
+                event.dataTransfer.setData("personId", person.id);
+                event.dataTransfer.setData("sourceTeamId", person.teamId);
+                event.dataTransfer.effectAllowed = "move";
+              }}
+              onRemoveFromTeam={onRemovePerson}
+            />
           ))}
         </ul>
       )}
@@ -162,6 +181,14 @@ function App() {
         person.id === personId
           ? { ...person, teamId: targetTeamId } // Update teamId for the dropped person
           : person
+      )
+    );
+  };
+
+  const handleRemovePersonFromTeam = (personId) => {
+    setPeople(prevPeople =>
+      prevPeople.map(person =>
+        person.id === personId ? { ...person, teamId: null } : person
       )
     );
   };
@@ -283,11 +310,9 @@ function App() {
             ) : (
               <ul className="person-list">
                 {unassignedPeople.map(person => (
-                  // Pass drag handler and isDraggable=true for unassigned people
                   <PersonItem
                     key={person.id}
                     person={person}
-                    isDraggable={true}
                     onDragStart={handleDragStart}
                   />
                 ))}
@@ -320,12 +345,12 @@ function App() {
                 <p>No teams created yet. Add a team above.</p>
               ) : (
                 teams.map(team => (
-                  // Pass drop handler to TeamItem
                   <TeamItem
                     key={team.id}
                     team={team}
                     people={people}
                     onDrop={handleDropOnTeam}
+                    onRemovePerson={handleRemovePersonFromTeam}
                   />
                 ))
               )}
